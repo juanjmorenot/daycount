@@ -41,6 +41,27 @@ THEMES = {
     },
 }
 
+# ---------- Stateful Design: persistencia de entradas ----------
+# Centralizamos los valores por defecto en session_state para mantener la
+# persistencia entre re-ejecuciones y permitir un "Restablecer" funcional.
+DEFAULTS = {
+    "modo": "Entre dos fechas",
+    "mostrar_detalle": True,
+    "tema": "Púrpura oficial",
+    "d_ini": datetime.now().date(),
+    "t_ini": datetime.now().time(),
+    "d_fin": datetime.now().date() + timedelta(days=30),
+    "t_fin": datetime.now().time(),
+    "base": datetime.now().date(),
+    "chk": datetime.now().date(),
+    "cantidad": 7,
+    "unidad": "Días",
+    "op": "Sumar",
+}
+for k, v in DEFAULTS.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
 st.markdown(
     """
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -111,20 +132,28 @@ st.markdown(
 st.markdown('<div class="daycount-logo">Day<span>count</span></div>', unsafe_allow_html=True)
 st.caption("Calcula la diferencia entre dos fechas con cuentas regresivas, progresivas y más — usando solo Streamlit.")
 
-# ---------- SIDEBAR: configuración ----------
+# ---------- SIDEBAR: configuración global ----------
 with st.sidebar:
     st.header("⚙️ Configuración")
     modo = st.radio(
         "Modo de cálculo",
         ["Entre dos fechas", "Hasta una fecha objetivo", "Desde una fecha pasada"],
+        index=["Entre dos fechas", "Hasta una fecha objetivo", "Desde una fecha pasada"].index(st.session_state["modo"]),
+        key="modo",
         help="Elige qué quieres comparar.",
     )
-    mostrar_detalle = st.toggle("Mostrar desglose detallado", value=True)
+    mostrar_detalle = st.toggle(
+        "Mostrar desglose detallado",
+        value=st.session_state["mostrar_detalle"],
+        key="mostrar_detalle",
+    )
     tema = st.selectbox(
         "Estilo de color",
         list(THEMES.keys()),
-        index=0,
+        index=list(THEMES.keys()).index(st.session_state["tema"]),
+        key="tema",
     )
+    # El tema seleccionado realmente se aplica vía variables CSS (feedback visual inmediato).
     sel = THEMES[tema]
     st.markdown(
         f"""<style>:root{{"""
@@ -151,18 +180,18 @@ def desglose(dt_delta: timedelta):
     anos = dias // 365
     return sign, dias, horas, minutos, segundos, semanas, meses, anos
 
-# ---------- Entradas de fecha (campos clickables) ----------
+# ---------- Entradas de fecha (persistidas en session_state) ----------
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("📅 Fecha y hora de inicio")
-    d_ini = st.date_input("Fecha inicio", value=datetime.now().date())
-    t_ini = st.time_input("Hora inicio", value=datetime.now().time())
+    d_ini = st.date_input("Fecha inicio", value=st.session_state["d_ini"], key="d_ini")
+    t_ini = st.time_input("Hora inicio", value=st.session_state["t_ini"], key="t_ini")
 
 with col2:
     st.subheader("📅 Fecha y hora de fin")
-    d_fin = st.date_input("Fecha fin", value=datetime.now().date() + timedelta(days=30))
-    t_fin = st.time_input("Hora fin", value=datetime.now().time())
+    d_fin = st.date_input("Fecha fin", value=st.session_state["d_fin"], key="d_fin")
+    t_fin = st.time_input("Hora fin", value=st.session_state["t_fin"], key="t_fin")
 
 inicio = datetime.combine(d_ini, t_ini)
 fin = datetime.combine(d_fin, t_fin)
@@ -179,11 +208,16 @@ sign, dias, horas, minutos, segundos, semanas, meses, anos = desglose(delta)
 st.divider()
 st.subheader("📊 Resultado principal")
 
+# Visibilidad: si el resultado es negativo, lo advertimos de inmediato (no solo dentro de una pestaña).
+if sign < 0:
+    st.warning("⚠️ El resultado es negativo: la fecha final es anterior a la inicial.")
+
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Días", f"{sign*dias:,}", help="Días de diferencia (puede ser negativo).")
-m2.metric("Horas totales", f"{sign*dias*24 + sign*horas:,}")
-m3.metric("Minutos totales", f"{sign*(dias*1440 + horas*60 + minutos):,}")
-m4.metric("Segundos totales", f"{sign*(dias*86400 + horas*3600 + minutos*60 + segundos):,}")
+direccion = "↩ hacia atrás" if sign < 0 else "↪ hacia adelante"
+m1.metric("Días", f"{sign*dias:,}", delta=direccion, help="Días de diferencia (puede ser negativo).")
+m2.metric("Horas totales", f"{sign*dias*24 + sign*horas:,}", help="Horas de diferencia.")
+m3.metric("Minutos totales", f"{sign*(dias*1440 + horas*60 + minutos):,}", help="Minutos de diferencia.")
+m4.metric("Segundos totales", f"{sign*(dias*86400 + horas*3600 + minutos*60 + segundos):,}", help="Segundos de diferencia.")
 
 # ---------- Tabs con desglose ----------
 if mostrar_detalle:
@@ -236,7 +270,7 @@ if mostrar_detalle:
 else:
     st.info("Activa 'Mostrar desglose detallado' en la barra lateral para ver más.")
 
-# ---------- Herramientas extra ----------
+# ---------- Herramientas extra (agrupadas en formularios para batching) ----------
 st.divider()
 st.subheader("🧮 Herramientas adicionales")
 
@@ -244,33 +278,44 @@ exp1, exp2 = st.columns(2)
 
 with exp1:
     with st.expander("➕ Sumar/restar tiempo a una fecha"):
-        base = st.date_input("Fecha base", value=datetime.now().date(), key="base")
-        cantidad = st.number_input("Cantidad", min_value=0, value=7, step=1)
-        unidad = st.selectbox("Unidad", ["Días", "Semanas", "Meses", "Años"])
-        op = st.radio("Operación", ["Sumar", "Restar"], horizontal=True)
-        mult = cantidad if op == "Sumar" else -cantidad
-        if unidad == "Días":
-            nueva = base + timedelta(days=mult)
-        elif unidad == "Semanas":
-            nueva = base + timedelta(weeks=mult)
-        elif unidad == "Meses":
-            mes = base.month - 1 + mult
-            año = base.year + mes // 12
-            mes = mes % 12 + 1
-            nueva = base.replace(year=año, month=mes)
-        else:
-            nueva = base.replace(year=base.year + mult)
-        st.success(f"Resultado: **{nueva:%Y-%m-%d}**")
+        # st.form agrupa las entradas y evita recálculos en cada pulsación de tecla.
+        with st.form("form_sumar", border=False):
+            base = st.date_input("Fecha base", value=st.session_state["base"], key="base")
+            cantidad = st.number_input("Cantidad", min_value=0, value=st.session_state["cantidad"], step=1, key="cantidad")
+            unidad = st.selectbox("Unidad", ["Días", "Semanas", "Meses", "Años"], index=["Días", "Semanas", "Meses", "Años"].index(st.session_state["unidad"]), key="unidad")
+            op = st.radio("Operación", ["Sumar", "Restar"], index=["Sumar", "Restar"].index(st.session_state["op"]), horizontal=True, key="op")
+            enviar = st.form_submit_button("Calcular", use_container_width=True)
+        if enviar:
+            mult = cantidad if op == "Sumar" else -cantidad
+            if unidad == "Días":
+                nueva = base + timedelta(days=mult)
+            elif unidad == "Semanas":
+                nueva = base + timedelta(weeks=mult)
+            elif unidad == "Meses":
+                mes = base.month - 1 + mult
+                año = base.year + mes // 12
+                mes = mes % 12 + 1
+                nueva = base.replace(year=año, month=mes)
+            else:
+                nueva = base.replace(year=base.year + mult)
+            st.success(f"Resultado: **{nueva:%Y-%m-%d}**")
 
 with exp2:
     with st.expander("🎯 ¿En qué día cae una fecha?"):
-        dchk = st.date_input("Verificar fecha", value=datetime.now().date(), key="chk")
-        nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-        st.write(f"Esa fecha cae un **{nombres[dchk.weekday()]}**.")
+        with st.form("form_dia", border=False):
+            dchk = st.date_input("Verificar fecha", value=st.session_state["chk"], key="chk")
+            enviar_dia = st.form_submit_button("Consultar", use_container_width=True)
+        if enviar_dia:
+            nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+            st.write(f"Esa fecha cae un **{nombres[dchk.weekday()]}**.")
 
-# ---------- Botón de acción ----------
-if st.button("🔄 Recalcular", use_container_width=True):
+# ---------- Acción de restablecer (Stateful Design + Feedback) ----------
+st.divider()
+if st.button("♻️ Restablecer valores", use_container_width=True):
+    # Devolver todas las entradas a sus valores por defecto y notificar al usuario.
+    for k, v in DEFAULTS.items():
+        st.session_state[k] = v
+    st.toast("Valores restablecidos a los predeterminados.", icon="♻️")
     st.rerun()
 
-st.divider()
 st.caption(f"Total aproximado: {anos} años, {meses} meses y {dias} días · Generado solo con Streamlit.")
