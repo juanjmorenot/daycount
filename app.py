@@ -2,12 +2,82 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 st.set_page_config(
-    page_title="Calculadora de Días y Horas",
+    page_title="Daycount · Calculadora de Días y Horas",
     page_icon="⏳",
     layout="wide",
 )
 
-st.title("⏳ Calculadora de Días y Horas")
+# ---------- Branding: paleta y tipografía (Open Sans + Bitter) ----------
+BRAND = {
+    "principal": "#9D00FF",
+    "acento_1": "#B069DB",
+    "acento_2": "#6E00B3",
+    "acento_3": "#3C0061",
+    "fondo_1": "#F7F2F7",
+    "fondo_2": "#E6E6E6",
+}
+
+st.markdown(
+    """
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=Bitter:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        html, body, [class*="stApp"] {
+            background-color: #F7F2F7;
+            font-family: 'Open Sans', sans-serif;
+            color: #3C0061;
+        }
+        .stApp {
+            background: linear-gradient(180deg, #F7F2F7 0%, #E6E6E6 100%);
+        }
+        h1, h2, h3, .stTitle {
+            font-family: 'Bitter', serif;
+            color: #6E00B3;
+        }
+        .daycount-logo {
+            font-family: 'Open Sans', sans-serif;
+            font-weight: 800;
+            font-size: 3.2rem;
+            letter-spacing: -1px;
+            color: #9D00FF;
+            line-height: 1.1;
+            margin-bottom: 0.2rem;
+        }
+        .daycount-logo span {
+            color: #6E00B3;
+        }
+        .stButton > button {
+            background-color: #9D00FF;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Open Sans', sans-serif;
+            font-weight: 600;
+        }
+        .stButton > button:hover {
+            background-color: #6E00B3;
+        }
+        .stMetric {
+            background-color: #FFFFFF;
+            border-left: 4px solid #B069DB;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+        }
+        .stSidebar {
+            background-color: #E6E6E6;
+        }
+        .stProgress > div > div {
+            background-color: #9D00FF;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ---------- Logo de la página ----------
+st.markdown('<div class="daycount-logo">Day<span>count</span></div>', unsafe_allow_html=True)
 st.caption("Calcula la diferencia entre dos fechas con cuentas regresivas, progresivas y más — usando solo Streamlit.")
 
 # ---------- SIDEBAR: configuración ----------
@@ -19,8 +89,17 @@ with st.sidebar:
         help="Elige qué quieres comparar.",
     )
     mostrar_detalle = st.toggle("Mostrar desglose detallado", value=True)
-    tema = st.selectbox("Estilo de color", ["Azul", "Verde", "Púrpura"], index=0)
-    color = {"Azul": "#1f77b4", "Verde": "#2ca02c", "Púrpura": "#9467bd"}[tema]
+    tema = st.selectbox(
+        "Estilo de color",
+        ["Púrpura oficial", "Acento claro", "Acento profundo", "Acento oscuro"],
+        index=0,
+    )
+    color = {
+        "Púrpura oficial": BRAND["principal"],
+        "Acento claro": BRAND["acento_1"],
+        "Acento profundo": BRAND["acento_2"],
+        "Acento oscuro": BRAND["acento_3"],
+    }[tema]
 
 # ---------- Funciones auxiliares (datetime puro) ----------
 def desglose(dt_delta: timedelta):
