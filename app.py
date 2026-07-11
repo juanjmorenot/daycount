@@ -8,13 +8,37 @@ st.set_page_config(
 )
 
 # ---------- Branding: paleta y tipografía (Open Sans + Bitter) ----------
-BRAND = {
-    "principal": "#9D00FF",
-    "acento_1": "#B069DB",
-    "acento_2": "#6E00B3",
-    "acento_3": "#3C0061",
-    "fondo_1": "#F7F2F7",
-    "fondo_2": "#E6E6E6",
+# Cada tema define un acento (títulos/enlaces, contraste >=4.5:1 sobre fondo claro)
+# y un color de botón (fondo oscuro suficiente para texto blanco >=4.5:1).
+THEMES = {
+    "Púrpura oficial": {
+        "acento": "#6E00B3",
+        "boton": "#9D00FF",
+        "boton_hover": "#6E00B3",
+        "borde": "#B069DB",
+        "fondo_grad": "linear-gradient(180deg, #F7F2F7 0%, #EDE7F0 100%)",
+    },
+    "Acento claro": {
+        "acento": "#8E24AA",
+        "boton": "#6E00B3",
+        "boton_hover": "#4A007A",
+        "borde": "#C79BE0",
+        "fondo_grad": "linear-gradient(180deg, #F7F2F7 0%, #EDE7F0 100%)",
+    },
+    "Acento profundo": {
+        "acento": "#5A0099",
+        "boton": "#4A007A",
+        "boton_hover": "#2E004D",
+        "borde": "#7A1FB0",
+        "fondo_grad": "linear-gradient(180deg, #F7F2F7 0%, #E7DEEF 100%)",
+    },
+    "Acento oscuro": {
+        "acento": "#3C0061",
+        "boton": "#2A0044",
+        "boton_hover": "#1A002B",
+        "borde": "#5A0099",
+        "fondo_grad": "linear-gradient(180deg, #F2ECF7 0%, #E2D6EC 100%)",
+    },
 }
 
 st.markdown(
@@ -24,32 +48,39 @@ st.markdown(
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=Bitter:wght@500;700&display=swap" rel="stylesheet">
 
     <style>
+        :root {
+            --dc-acento: #6E00B3;
+            --dc-boton: #9D00FF;
+            --dc-boton-hover: #6E00B3;
+            --dc-borde: #B069DB;
+            --dc-fondo-grad: linear-gradient(180deg, #F7F2F7 0%, #EDE7F0 100%);
+        }
         html, body, [class*="stApp"] {
             background-color: #F7F2F7;
             font-family: 'Open Sans', sans-serif;
             color: #3C0061;
         }
         .stApp {
-            background: linear-gradient(180deg, #F7F2F7 0%, #E6E6E6 100%);
+            background: var(--dc-fondo-grad);
         }
         h1, h2, h3, .stTitle {
             font-family: 'Bitter', serif;
-            color: #6E00B3;
+            color: var(--dc-acento);
         }
         .daycount-logo {
             font-family: 'Open Sans', sans-serif;
             font-weight: 800;
             font-size: 3.2rem;
             letter-spacing: -1px;
-            color: #9D00FF;
+            color: var(--dc-boton);
             line-height: 1.1;
             margin-bottom: 0.2rem;
         }
         .daycount-logo span {
-            color: #6E00B3;
+            color: var(--dc-acento);
         }
         .stButton > button {
-            background-color: #9D00FF;
+            background-color: var(--dc-boton);
             color: #FFFFFF;
             border: none;
             border-radius: 10px;
@@ -57,19 +88,19 @@ st.markdown(
             font-weight: 600;
         }
         .stButton > button:hover {
-            background-color: #6E00B3;
+            background-color: var(--dc-boton-hover);
         }
         .stMetric {
             background-color: #FFFFFF;
-            border-left: 4px solid #B069DB;
+            border-left: 4px solid var(--dc-borde);
             border-radius: 10px;
             padding: 0.5rem 1rem;
         }
         .stSidebar {
-            background-color: #E6E6E6;
+            background-color: #EDE7F0;
         }
         .stProgress > div > div {
-            background-color: #9D00FF;
+            background-color: var(--dc-boton);
         }
     </style>
     """,
@@ -91,15 +122,20 @@ with st.sidebar:
     mostrar_detalle = st.toggle("Mostrar desglose detallado", value=True)
     tema = st.selectbox(
         "Estilo de color",
-        ["Púrpura oficial", "Acento claro", "Acento profundo", "Acento oscuro"],
+        list(THEMES.keys()),
         index=0,
     )
-    color = {
-        "Púrpura oficial": BRAND["principal"],
-        "Acento claro": BRAND["acento_1"],
-        "Acento profundo": BRAND["acento_2"],
-        "Acento oscuro": BRAND["acento_3"],
-    }[tema]
+    sel = THEMES[tema]
+    st.markdown(
+        f"""<style>:root{{"""
+        f"""--dc-acento:{sel['acento']};"""
+        f"""--dc-boton:{sel['boton']};"""
+        f"""--dc-boton-hover:{sel['boton_hover']};"""
+        f"""--dc-borde:{sel['borde']};"""
+        f"""--dc-fondo-grad:{sel['fondo_grad']};"""
+        f"""}}</style>""",
+        unsafe_allow_html=True,
+    )
 
 # ---------- Funciones auxiliares (datetime puro) ----------
 def desglose(dt_delta: timedelta):
