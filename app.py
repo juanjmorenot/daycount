@@ -70,6 +70,15 @@ st.markdown(
 
     <style>
         :root {
+            /* Variables de tema de Streamlit: forzamos un tema CLARO y coherente
+               para evitar texto claro sobre tarjetas blancas (blanco sobre blanco)
+               cuando el despliegue usa tema oscuro por defecto. */
+            --primary-color: #9D00FF !important;
+            --background-color: #F7F2F7 !important;
+            --secondary-background-color: #FFFFFF !important;
+            --text-color: #3C0061 !important;
+            --font: 'Open Sans', sans-serif !important;
+            /* Tokens de marca propios */
             --dc-acento: #6E00B3;
             --dc-boton: #9D00FF;
             --dc-boton-hover: #6E00B3;
@@ -77,12 +86,12 @@ st.markdown(
             --dc-fondo-grad: linear-gradient(180deg, #F7F2F7 0%, #EDE7F0 100%);
         }
         html, body, [class*="stApp"] {
-            background-color: #F7F2F7;
+            background-color: #F7F2F7 !important;
             font-family: 'Open Sans', sans-serif;
             color: #3C0061;
         }
         .stApp {
-            background: var(--dc-fondo-grad);
+            background: var(--dc-fondo-grad) !important;
         }
         h1, h2, h3, .stTitle {
             font-family: 'Bitter', serif;
@@ -111,17 +120,28 @@ st.markdown(
         .stButton > button:hover {
             background-color: var(--dc-boton-hover);
         }
+        /* Tarjetas de métricas: superficie blanca claramente diferenciada del
+           fondo mediante borde + sombra, con texto de alto contraste. */
         .stMetric {
-            background-color: #FFFFFF;
-            border-left: 4px solid var(--dc-borde);
-            border-radius: 10px;
-            padding: 0.5rem 1rem;
+            background-color: #FFFFFF !important;
+            border: 1px solid #E4D7EF !important;
+            border-left: 4px solid var(--dc-borde) !important;
+            border-radius: 10px !important;
+            padding: 0.6rem 1rem !important;
+            box-shadow: 0 1px 3px rgba(60, 0, 97, 0.12) !important;
+        }
+        [data-testid="stMetricLabel"] {
+            color: #6E00B3 !important;
+            font-weight: 600 !important;
+        }
+        [data-testid="stMetricValue"] {
+            color: #3C0061 !important;
         }
         .stSidebar {
-            background-color: #EDE7F0;
+            background-color: #EDE7F0 !important;
         }
         .stProgress > div > div {
-            background-color: var(--dc-boton);
+            background-color: var(--dc-boton) !important;
         }
     </style>
     """,
@@ -157,6 +177,7 @@ with st.sidebar:
     sel = THEMES[tema]
     st.markdown(
         f"""<style>:root{{"""
+        f"""--primary-color:{sel['boton']} !important;"""
         f"""--dc-acento:{sel['acento']};"""
         f"""--dc-boton:{sel['boton']};"""
         f"""--dc-boton-hover:{sel['boton_hover']};"""
