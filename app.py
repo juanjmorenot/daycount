@@ -1,5 +1,11 @@
 import streamlit as st
 from datetime import datetime, timedelta
+import sys
+
+if not st.runtime.exists():
+    print("[ERROR] Este archivo debe ejecutarse con:  streamlit run app.py")
+    print("        No uses:  python app.py")
+    sys.exit(1)
 
 st.set_page_config(
     page_title="Daycount · Calculadora de Días y Horas",
@@ -7,9 +13,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# ---------- Branding: paleta y tipografía (Open Sans + Bitter) ----------
-# Cada tema define un acento (títulos/enlaces, contraste >=4.5:1 sobre fondo claro)
-# y un color de botón (fondo oscuro suficiente para texto blanco >=4.5:1).
+# ---------- Branding ----------
 THEMES = {
     "Púrpura oficial": {
         "acento": "#6E00B3",
@@ -41,9 +45,7 @@ THEMES = {
     },
 }
 
-# ---------- Stateful Design: persistencia de entradas ----------
-# Centralizamos los valores por defecto en session_state para mantener la
-# persistencia entre re-ejecuciones y permitir un "Restablecer" funcional.
+# ---------- Stateful Design ----------
 DEFAULTS = {
     "modo": "Entre dos fechas",
     "mostrar_detalle": True,
@@ -70,91 +72,139 @@ st.markdown(
 
     <style>
         :root {
-            /* Variables de tema de Streamlit: forzamos un tema CLARO y coherente
-               para evitar texto claro sobre tarjetas blancas (blanco sobre blanco)
-               cuando el despliegue usa tema oscuro por defecto. */
             --primary-color: #9D00FF !important;
             --background-color: #F7F2F7 !important;
             --secondary-background-color: #FFFFFF !important;
             --text-color: #3C0061 !important;
             --font: 'Open Sans', sans-serif !important;
-            /* Tokens de marca propios */
             --dc-acento: #6E00B3;
             --dc-boton: #9D00FF;
             --dc-boton-hover: #6E00B3;
             --dc-borde: #B069DB;
             --dc-fondo-grad: linear-gradient(180deg, #F7F2F7 0%, #EDE7F0 100%);
         }
-        html, body, [class*="stApp"] {
-            background-color: #F7F2F7 !important;
-            font-family: 'Open Sans', sans-serif;
-            color: #3C0061;
+        body, .stApp { background: var(--dc-fondo-grad) !important; color: #3C0061; }
+        .stAppHeader { display: none !important; }
+
+        /* === Bento cards === */
+        div[class*=" st-key-card-"], div[class^="st-key-card-"] {
+            background: #FFFFFF !important;
+            border-radius: 14px !important;
+            padding: 1.25rem 1.5rem !important;
+            border: 1px solid #E4D7EF !important;
+            box-shadow: 0 2px 6px rgba(60, 0, 97, 0.06) !important;
+            height: 100%;
         }
-        .stApp {
-            background: var(--dc-fondo-grad) !important;
-        }
-        h1, h2, h3, .stTitle {
-            font-family: 'Bitter', serif;
-            color: var(--dc-acento);
-        }
-        .daycount-logo {
-            font-family: 'Open Sans', sans-serif;
-            font-weight: 800;
-            font-size: 3.2rem;
-            letter-spacing: -1px;
-            color: var(--dc-boton);
-            line-height: 1.1;
-            margin-bottom: 0.2rem;
-        }
-        .daycount-logo span {
-            color: var(--dc-acento);
-        }
-        .stButton > button {
-            background-color: var(--dc-boton);
-            color: #FFFFFF;
-            border: none;
-            border-radius: 10px;
+
+        .card-heading {
             font-family: 'Open Sans', sans-serif;
             font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--dc-acento);
+            margin-bottom: 0.5rem;
         }
-        .stButton > button:hover {
-            background-color: var(--dc-boton-hover);
+
+        /* === Hero Card === */
+        .st-key-card-hero { text-align: center !important; padding: 1.5rem 2rem !important; }
+        .hero-unit {
+            font-family: 'Bitter', serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--dc-acento);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.1rem;
         }
-        /* Tarjetas de métricas: superficie blanca claramente diferenciada del
-           fondo mediante borde + sombra, con texto de alto contraste. */
-        .stMetric {
-            background-color: #FFFFFF !important;
-            border: 1px solid #E4D7EF !important;
-            border-left: 4px solid var(--dc-borde) !important;
-            border-radius: 10px !important;
-            padding: 0.6rem 1rem !important;
-            box-shadow: 0 1px 3px rgba(60, 0, 97, 0.12) !important;
+        .hero-number {
+            font-family: 'Open Sans', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2.5rem, 7vw, 5rem);
+            line-height: 1.05;
+            color: #3C0061;
+            margin: 0.1rem 0;
         }
-        [data-testid="stMetricLabel"] {
-            color: #6E00B3 !important;
-            font-weight: 600 !important;
+        .hero-number.negative { color: #B0003A; }
+        .hero-direction { font-size: 1rem; color: var(--dc-acento); margin-bottom: 0.75rem; }
+        .hero-metrics {
+            display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;
+            padding-top: 0.75rem; border-top: 1px solid #EDE7F0;
         }
-        [data-testid="stMetricValue"] {
-            color: #3C0061 !important;
+        .hm-item { text-align: center; min-width: 80px; }
+        .hm-value { font-weight: 700; font-size: 1.25rem; color: #3C0061; }
+        .hm-label {
+            font-size: 0.68rem; font-weight: 600; color: var(--dc-acento);
+            text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.05rem;
         }
-        .stSidebar {
-            background-color: #EDE7F0 !important;
+
+        /* === Status card === */
+        .status-mode { font-weight: 600; font-size: 0.9rem; color: #3C0061; }
+        .neg-flag {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.35rem 0.7rem; border-radius: 8px;
+            font-weight: 600; font-size: 0.8rem;
+            background: #FFF0F0; color: #B0003A; border: 1px solid #FFD4D4;
         }
-        .stProgress > div > div {
+        .detail-badge {
+            display: inline-block; margin-top: 0.5rem;
+            font-size: 0.75rem; color: var(--dc-acento);
+        }
+
+        /* === Date picker grid === */
+        .fecha-label { font-size: 0.75rem; font-weight: 600; color: #6E00B3; margin-bottom: 0.15rem; }
+
+        /* === Progress === */
+        .stProgress > div { padding: 0 !important; }
+        .stProgress > div > div { background-color: var(--dc-boton) !important; border-radius: 20px !important; }
+
+        /* === Button === */
+        .stButton > button {
             background-color: var(--dc-boton) !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            font-family: 'Open Sans', sans-serif !important;
+        }
+        .stButton > button:hover { background-color: var(--dc-boton-hover) !important; }
+        .stDateInput, .stTimeInput { width: 100% !important; }
+        .stDateInput > div, .stTimeInput > div { width: 100% !important; }
+
+        /* === Sidebar === */
+        .stSidebar { background-color: #EDE7F0 !important; padding: 1rem !important; }
+
+        /* === Spacing between rows === */
+        [data-testid="column"] { gap: 0.75rem; display: flex; flex-direction: column; }
+        [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"]:not(:first-child) {
+            margin-top: 0.75rem;
+        }
+        .stAlert { border-radius: 10px !important; }
+
+        /* === Tool cards compact forms === */
+        .tool-result { text-align: center; font-size: 1.1rem; font-weight: 600; color: #3C0061; margin-top: 0.5rem; }
+
+        @media (max-width: 640px) {
+            [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
         }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ---------- Logo de la página ----------
-st.markdown('<div class="daycount-logo">Day<span>count</span></div>', unsafe_allow_html=True)
+# ---------- Logo ----------
+st.markdown(
+    '<div style="max-width:1000px;margin:0 auto 0.25rem">'
+    '<span style="font-family:Open Sans,sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-0.5px;color:var(--dc-boton)">Day</span>'
+    '<span style="font-family:Open Sans,sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-0.5px;color:var(--dc-acento)">count</span>'
+    '</div>',
+    unsafe_allow_html=True,
+)
 st.caption("Calcula la diferencia entre dos fechas con cuentas regresivas, progresivas y más — usando solo Streamlit.")
 
-# ---------- SIDEBAR: configuración global ----------
+# ---------- SIDEBAR ----------
 with st.sidebar:
-    st.header("⚙️ Configuración")
+    st.markdown('<div class="card-heading" style="margin-top:0">⚙️ Configuración</div>', unsafe_allow_html=True)
     modo = st.radio(
         "Modo de cálculo",
         ["Entre dos fechas", "Hasta una fecha objetivo", "Desde una fecha pasada"],
@@ -162,18 +212,13 @@ with st.sidebar:
         key="modo",
         help="Elige qué quieres comparar.",
     )
-    mostrar_detalle = st.toggle(
-        "Mostrar desglose detallado",
-        value=st.session_state["mostrar_detalle"],
-        key="mostrar_detalle",
-    )
+    mostrar_detalle = st.toggle("Mostrar desglose detallado", value=st.session_state["mostrar_detalle"], key="mostrar_detalle")
     tema = st.selectbox(
         "Estilo de color",
         list(THEMES.keys()),
         index=list(THEMES.keys()).index(st.session_state["tema"]),
         key="tema",
     )
-    # El tema seleccionado realmente se aplica vía variables CSS (feedback visual inmediato).
     sel = THEMES[tema]
     st.markdown(
         f"""<style>:root{{"""
@@ -187,7 +232,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-# ---------- Funciones auxiliares (datetime puro) ----------
+# ---------- Lógica ----------
 def desglose(dt_delta: timedelta):
     total_seg = int(dt_delta.total_seconds())
     sign = -1 if total_seg < 0 else 1
@@ -201,142 +246,167 @@ def desglose(dt_delta: timedelta):
     anos = dias // 365
     return sign, dias, horas, minutos, segundos, semanas, meses, anos
 
-# ---------- Entradas de fecha (persistidas en session_state) ----------
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("📅 Fecha y hora de inicio")
-    d_ini = st.date_input("Fecha inicio", value=st.session_state["d_ini"], key="d_ini")
-    t_ini = st.time_input("Hora inicio", value=st.session_state["t_ini"], key="t_ini")
-
-with col2:
-    st.subheader("📅 Fecha y hora de fin")
-    d_fin = st.date_input("Fecha fin", value=st.session_state["d_fin"], key="d_fin")
-    t_fin = st.time_input("Hora fin", value=st.session_state["t_fin"], key="t_fin")
-
-inicio = datetime.combine(d_ini, t_ini)
-fin = datetime.combine(d_fin, t_fin)
+# Las lecturas de session_state se actualizan cuando los widgets (definidos abajo en cards)
+# son modificados por el usuario.
+_inicio = datetime.combine(st.session_state["d_ini"], st.session_state["t_ini"])
+_fin = datetime.combine(st.session_state["d_fin"], st.session_state["t_fin"])
 
 if modo == "Hasta una fecha objetivo":
-    inicio = datetime.now()
+    _inicio = datetime.now()
 elif modo == "Desde una fecha pasada":
-    fin = datetime.now()
+    _fin = datetime.now()
 
-delta = fin - inicio
+delta = _fin - _inicio
 sign, dias, horas, minutos, segundos, semanas, meses, anos = desglose(delta)
 
-# ---------- Métricas principales ----------
-st.divider()
-st.subheader("📊 Resultado principal")
+# ---------- BENTO GRID (columnas) ----------
 
-# Visibilidad: si el resultado es negativo, lo advertimos de inmediato (no solo dentro de una pestaña).
-if sign < 0:
-    st.warning("⚠️ El resultado es negativo: la fecha final es anterior a la inicial.")
+# ---- Row 1: Hero Card (full width) ----
+with st.container(key="card-hero"):
+    direccion = "↩ hacia atrás" if sign < 0 else "↪ hacia adelante"
+    neg_class = " negative" if sign < 0 else ""
+    st.markdown(
+        f"""
+        <div class="hero-unit">Días</div>
+        <div class="hero-number{neg_class}">{sign*dias:,}</div>
+        <div class="hero-direction">{direccion}</div>
+        <div class="hero-metrics">
+            <div class="hm-item">
+                <div class="hm-value">{sign*dias*24 + sign*horas:,}</div>
+                <div class="hm-label">Horas</div>
+            </div>
+            <div class="hm-item">
+                <div class="hm-value">{sign*(dias*1440 + horas*60 + minutos):,}</div>
+                <div class="hm-label">Minutos</div>
+            </div>
+            <div class="hm-item">
+                <div class="hm-value">{sign*(dias*86400 + horas*3600 + minutos*60 + segundos):,}</div>
+                <div class="hm-label">Segundos</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-m1, m2, m3, m4 = st.columns(4)
-direccion = "↩ hacia atrás" if sign < 0 else "↪ hacia adelante"
-m1.metric("Días", f"{sign*dias:,}", delta=direccion, help="Días de diferencia (puede ser negativo).")
-m2.metric("Horas totales", f"{sign*dias*24 + sign*horas:,}", help="Horas de diferencia.")
-m3.metric("Minutos totales", f"{sign*(dias*1440 + horas*60 + minutos):,}", help="Minutos de diferencia.")
-m4.metric("Segundos totales", f"{sign*(dias*86400 + horas*3600 + minutos*60 + segundos):,}", help="Segundos de diferencia.")
+# ---- Row 2: Fechas + Status ----
+col_f, col_s = st.columns([1.6, 1])
 
-# ---------- Tabs con desglose ----------
-if mostrar_detalle:
-    tab1, tab2, tab3, tab4 = st.tabs(["🗓️ Desglose", "🔁 Cuenta Regresiva", "➡️ Cuenta Progresiva", "📈 Proporciones"])
+with col_f:
+    with st.container(key="card-fechas"):
+        st.markdown('<div class="card-heading">📅 Fechas</div>', unsafe_allow_html=True)
+        fc1, fc2 = st.columns(2)
+        with fc1:
+            st.markdown('<div class="fecha-label">Inicio</div>', unsafe_allow_html=True)
+            st.date_input("ini_d", value=st.session_state["d_ini"], key="d_ini", label_visibility="collapsed")
+            st.time_input("ini_t", value=st.session_state["t_ini"], key="t_ini", label_visibility="collapsed")
+        with fc2:
+            st.markdown('<div class="fecha-label">Fin</div>', unsafe_allow_html=True)
+            st.date_input("fin_d", value=st.session_state["d_fin"], key="d_fin", label_visibility="collapsed")
+            st.time_input("fin_t", value=st.session_state["t_fin"], key="t_fin", label_visibility="collapsed")
 
-    with tab1:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Semanas", f"{semanas:,}")
-        c2.metric("Meses (≈30d)", f"{meses:,}")
-        c3.metric("Años (≈365d)", f"{anos:,}")
-        st.write(f"**Detalle exacto:** {sign*dias} días, {horas} h, {minutos} min, {segundos} s")
+with col_s:
+    with st.container(key="card-status"):
+        st.markdown('<div class="card-heading">⚙️ Estado</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="status-mode">Modo: <strong>{modo}</strong></div>', unsafe_allow_html=True)
         if sign < 0:
-            st.warning("⚠️ La fecha de fin es anterior a la de inicio.")
+            st.markdown('<div class="neg-flag">⚠️ La fecha de fin es anterior a la de inicio</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="detail-badge">Desglose: {"✅ activo" if mostrar_detalle else "— inactivo"}</div>', unsafe_allow_html=True)
+        # Pequeños datos adicionales
+        st.markdown(f'<div style="margin-top:0.5rem;font-size:0.75rem;color:#6E00B3">{semanas} semanas · {meses} meses · {anos} años</div>', unsafe_allow_html=True)
 
-    with tab2:
-        st.info("Cuenta regresiva: tiempo restante hasta la fecha de fin.")
-        if fin > datetime.now():
-            restante = fin - datetime.now()
-            s, dd, hh, mm, ss, _, _, _ = desglose(restante)
-            col_a, col_b, col_c = st.columns(3)
-            col_a.metric("Días restantes", dd)
-            col_b.metric("Horas restantes", hh)
-            col_c.metric("Minutos restantes", mm)
-            st.write(f"⏱️ Faltan **{dd} días, {hh} h, {mm} min y {ss} s** para llegar a {fin:%Y-%m-%d %H:%M}.")
-            progreso = max(0.0, min(1.0, (datetime.now() - inicio).total_seconds() / max(1, delta.total_seconds())))
-            st.progress(progreso, text="Progreso hasta la fecha objetivo")
-        else:
-            st.success("✅ ¡La fecha objetivo ya llegó!")
+# ---- Row 3: Detalle cards ----
+if mostrar_detalle:
+    col_cd, col_cp, col_pr = st.columns(3)
 
-    with tab3:
-        st.info("Cuenta progresiva: tiempo transcurrido desde el inicio.")
-        if inicio < datetime.now():
-            trans = datetime.now() - inicio
-            _, dd, hh, mm, ss, _, _, _ = desglose(trans)
-            st.write(f"⏳ Han pasado **{dd} días, {hh} h, {mm} min y {ss} s** desde {inicio:%Y-%m-%d %H:%M}.")
-            prog = max(0.0, min(1.0, trans.total_seconds() / max(1, delta.total_seconds())))
-            st.progress(prog, text="Tiempo transcurrido")
-        else:
-            st.warning("La fecha de inicio aún no ocurre.")
+    with col_cd:
+        with st.container(key="card-countdown"):
+            st.markdown('<div class="card-heading">🔁 Cuenta regresiva</div>', unsafe_allow_html=True)
+            if _fin > datetime.now():
+                restante = _fin - datetime.now()
+                s, dd, hh, mm, ss, _, _, _ = desglose(restante)
+                st.markdown(f'<div style="font-size:1rem;color:#3C0061"><strong>{dd}</strong> días, <strong>{hh}</strong> h, <strong>{mm}</strong> min</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="font-size:0.72rem;color:var(--dc-acento);margin-bottom:0.4rem">Hasta {_fin:%d/%m/%Y %H:%M}</div>', unsafe_allow_html=True)
+                p = max(0.0, min(1.0, (datetime.now() - _inicio).total_seconds() / max(1, delta.total_seconds())))
+                st.progress(p, text="Progreso")
+            else:
+                st.markdown('<div style="color:#21A67A;font-weight:600">✅ Ya llegó</div>', unsafe_allow_html=True)
 
-    with tab4:
-        st.info("Distribución del tiempo en unidades.")
-        datos = {
-            "Días": abs(dias),
-            "Semanas": semanas,
-            "Meses": meses,
-            "Años": anos,
-        }
-        st.bar_chart(datos)
+    with col_cp:
+        with st.container(key="card-progresiva"):
+            st.markdown('<div class="card-heading">➡️ Cuenta progresiva</div>', unsafe_allow_html=True)
+            if _inicio < datetime.now():
+                trans = datetime.now() - _inicio
+                _, dd, hh, mm, ss, _, _, _ = desglose(trans)
+                st.markdown(f'<div style="font-size:1rem;color:#3C0061">Pasaron <strong>{dd}</strong> días</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="font-size:0.72rem;color:var(--dc-acento);margin-bottom:0.4rem">Desde {_inicio:%d/%m/%Y %H:%M}</div>', unsafe_allow_html=True)
+                pp = max(0.0, min(1.0, trans.total_seconds() / max(1, delta.total_seconds())))
+                st.progress(pp, text="Transcurrido")
+            else:
+                st.markdown('<div style="color:#A0A0B0">⏳ Aún no ocurre</div>', unsafe_allow_html=True)
+
+    with col_pr:
+        with st.container(key="card-proporciones"):
+            st.markdown('<div class="card-heading">📈 Proporciones</div>', unsafe_allow_html=True)
+            datos = {"Días": abs(dias), "Semanas": semanas, "Meses": meses, "Años": anos}
+            st.bar_chart(datos, horizontal=True, height=160)
+
+    # ---- Desglose exacto (full-width) ----
+    with st.container(key="card-desglose"):
+        st.markdown(
+            f'<span style="font-weight:600;color:var(--dc-acento)">Detalle exacto:</span> '
+            f'{sign*dias} días, {horas} h, {minutos} min, {segundos} s',
+            unsafe_allow_html=True,
+        )
 else:
-    st.info("Activa 'Mostrar desglose detallado' en la barra lateral para ver más.")
+    st.info("💡 Activa «Mostrar desglose detallado» en la barra lateral para ver cuentas regresivas y proporciones.", icon="💡")
 
-# ---------- Herramientas extra (agrupadas en formularios para batching) ----------
-st.divider()
-st.subheader("🧮 Herramientas adicionales")
+# ---- Row 5: Tools ----
+col_t1, col_t2 = st.columns(2)
 
-exp1, exp2 = st.columns(2)
-
-with exp1:
-    with st.expander("➕ Sumar/restar tiempo a una fecha"):
-        # st.form agrupa las entradas y evita recálculos en cada pulsación de tecla.
+with col_t1:
+    with st.container(key="card-sumar"):
+        st.markdown('<div class="card-heading">➕ Sumar / restar tiempo</div>', unsafe_allow_html=True)
         with st.form("form_sumar", border=False):
-            base = st.date_input("Fecha base", value=st.session_state["base"], key="base")
-            cantidad = st.number_input("Cantidad", min_value=0, value=st.session_state["cantidad"], step=1, key="cantidad")
-            unidad = st.selectbox("Unidad", ["Días", "Semanas", "Meses", "Años"], index=["Días", "Semanas", "Meses", "Años"].index(st.session_state["unidad"]), key="unidad")
-            op = st.radio("Operación", ["Sumar", "Restar"], index=["Sumar", "Restar"].index(st.session_state["op"]), horizontal=True, key="op")
+            st.date_input("Base", value=st.session_state["base"], key="base", label_visibility="collapsed")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.number_input("Cant", min_value=0, value=st.session_state["cantidad"], step=1, key="cantidad", label_visibility="collapsed")
+            with c2:
+                st.selectbox("Unidad", ["Días", "Semanas", "Meses", "Años"], index=["Días", "Semanas", "Meses", "Años"].index(st.session_state["unidad"]), key="unidad", label_visibility="collapsed")
+            with c3:
+                st.radio("Op", ["Sumar", "Restar"], index=["Sumar", "Restar"].index(st.session_state["op"]), horizontal=True, key="op", label_visibility="collapsed")
             enviar = st.form_submit_button("Calcular", use_container_width=True)
         if enviar:
-            mult = cantidad if op == "Sumar" else -cantidad
-            if unidad == "Días":
-                nueva = base + timedelta(days=mult)
-            elif unidad == "Semanas":
-                nueva = base + timedelta(weeks=mult)
-            elif unidad == "Meses":
-                mes = base.month - 1 + mult
-                año = base.year + mes // 12
+            mult = st.session_state["cantidad"] if st.session_state["op"] == "Sumar" else -st.session_state["cantidad"]
+            u = st.session_state["unidad"]
+            if u == "Días":
+                nueva = st.session_state["base"] + timedelta(days=mult)
+            elif u == "Semanas":
+                nueva = st.session_state["base"] + timedelta(weeks=mult)
+            elif u == "Meses":
+                mes = st.session_state["base"].month - 1 + mult
+                año = st.session_state["base"].year + mes // 12
                 mes = mes % 12 + 1
-                nueva = base.replace(year=año, month=mes)
+                nueva = st.session_state["base"].replace(year=año, month=mes)
             else:
-                nueva = base.replace(year=base.year + mult)
-            st.success(f"Resultado: **{nueva:%Y-%m-%d}**")
+                nueva = st.session_state["base"].replace(year=st.session_state["base"].year + mult)
+            st.markdown(f'<div class="tool-result">📅 {nueva:%d/%m/%Y}</div>', unsafe_allow_html=True)
 
-with exp2:
-    with st.expander("🎯 ¿En qué día cae una fecha?"):
+with col_t2:
+    with st.container(key="card-dia"):
+        st.markdown('<div class="card-heading">🎯 Día de la semana</div>', unsafe_allow_html=True)
         with st.form("form_dia", border=False):
-            dchk = st.date_input("Verificar fecha", value=st.session_state["chk"], key="chk")
+            st.date_input("Verificar", value=st.session_state["chk"], key="chk", label_visibility="collapsed")
             enviar_dia = st.form_submit_button("Consultar", use_container_width=True)
         if enviar_dia:
             nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-            st.write(f"Esa fecha cae un **{nombres[dchk.weekday()]}**.")
+            st.markdown(f'<div class="tool-result">{nombres[st.session_state["chk"].weekday()]}</div>', unsafe_allow_html=True)
 
-# ---------- Acción de restablecer (Stateful Design + Feedback) ----------
-st.divider()
-if st.button("♻️ Restablecer valores", use_container_width=True):
-    # Devolver todas las entradas a sus valores por defecto y notificar al usuario.
-    for k, v in DEFAULTS.items():
-        st.session_state[k] = v
-    st.toast("Valores restablecidos a los predeterminados.", icon="♻️")
-    st.rerun()
-
-st.caption(f"Total aproximado: {anos} años, {meses} meses y {dias} días · Generado solo con Streamlit.")
+# ---- Row 6: Reset ----
+rc1, rc2, rc3 = st.columns([1, 2, 1])
+with rc2:
+    if st.button("♻️ Restablecer valores", use_container_width=True, key="btn_reset"):
+        for k, v in DEFAULTS.items():
+            st.session_state[k] = v
+        st.toast("Valores restablecidos.", icon="♻️")
+        st.rerun()
